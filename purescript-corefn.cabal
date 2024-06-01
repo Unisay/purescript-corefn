@@ -1,0 +1,65 @@
+cabal-version: 3.4
+name:          purescript-corefn
+version:       0.1.0.0
+synopsis:      Haskell library to parse PureScript CoreFn files.
+homepage:      http://github.com/Unisay/purescript-corefn
+license:       BSD-3-Clause
+license-file:  LICENSE
+author:        Yura Lazaryev
+maintainer:    Unisay@users.noreply.github.com
+category:      Language
+build-type:    Simple
+
+common options
+  ghc-options:
+    -O2 -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns
+    -Werror=missing-fields -Werror=missing-methods
+    -Werror=missing-signatures -Wmissing-deriving-strategies
+    -Wunused-foralls -Wunused-foralls -fprint-explicit-foralls
+    -fprint-explicit-kinds -Wcompat -Widentities
+    -Werror=incomplete-patterns -Wredundant-constraints
+    -Wpartial-fields -Wtabs -Wmissing-local-signatures -fhelpful-errors
+    -fprint-expanded-synonyms -fwarn-unused-do-bind
+
+library
+  import:             options
+  build-depends:
+    , aeson                ^>=2.2.2
+    , array                ^>=0.5.6
+    , base                 ^>=4.18.2
+    , bytestring           ^>=0.12.1
+    , containers           ^>=0.6.7
+    , monoidal-containers  ^>=0.6.4
+    , mtl                  ^>=2.3.1
+    , oops                 ^>=0.2.0.1
+    , path                 ^>=0.9.5
+    , path-io              ^>=1.8.2
+    , scientific           ^>=0.3.6
+    , tagged               ^>=0.8.8
+    , text                 ^>=2.0.2
+    , vector               ^>=0.13.1
+
+  hs-source-dirs:     src
+  default-language:   GHC2021
+  default-extensions:
+    DerivingStrategies
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    NamedFieldPuns
+    OverloadedStrings
+    PatternSynonyms
+    RecordWildCards
+    UnicodeSyntax
+
+  exposed-modules:
+    Language.PureScript.Comments
+    Language.PureScript.CoreFn
+    Language.PureScript.CoreFn.Expr
+    Language.PureScript.CoreFn.FromJSON
+    Language.PureScript.CoreFn.Laziness
+    Language.PureScript.CoreFn.Meta
+    Language.PureScript.CoreFn.Module
+    Language.PureScript.CoreFn.Reader
+    Language.PureScript.CoreFn.Traversals
+    Language.PureScript.Names
+    Language.PureScript.PSString

@@ -38,7 +38,10 @@
   # https://devenv.sh/languages/
   languages = {
     nix.enable = true;
-    haskell.enable = true;
+    haskell = {
+      enable = true;
+      # package = pkgs.haskell.compiler.ghc98; # Needs cabal >= 3.10.1.2
+    };
   };
 
   # https://devenv.sh/pre-commit-hooks/

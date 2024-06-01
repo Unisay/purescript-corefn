@@ -36,7 +36,7 @@ library
     , path-io              ^>=1.8.2
     , scientific           ^>=0.3.6
     , tagged               ^>=0.8.8
-    , text                 ^>=2.0.2
+    , text                 >=2.0.2    && <2.2
     , vector               ^>=0.13.1
 
   hs-source-dirs:     src

@@ -1,7 +1,9 @@
 -- | Metadata annotations for core functional representation
 module Language.PureScript.CoreFn.Meta where
 
-import Language.PureScript.Names (Ident)
+import Language.PureScript.CoreFn.Ident (Ident)
+
+type Ann = Maybe Meta
 
 -- | Metadata annotations
 data Meta

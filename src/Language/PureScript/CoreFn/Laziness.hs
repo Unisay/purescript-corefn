@@ -33,15 +33,17 @@ import Language.PureScript.CoreFn
   , Literal (NumericLiteral, StringLiteral)
   , Meta (IsConstructor, IsNewtype)
   )
-import Language.PureScript.CoreFn.Traversals (traverseCoreFn)
-import Language.PureScript.Names
+import Language.PureScript.CoreFn.Ident
   ( Ident (..)
   , InternalIdentData (Lazy, RuntimeLazyFactory)
-  , ModuleName (..)
-  , Qualified (..)
+  )
+import Language.PureScript.CoreFn.ModuleName (ModuleName)
+import Language.PureScript.CoreFn.Qualified
+  ( Qualified (..)
   , toMaybeModuleName
   , pattern ByNullSourcePos
   )
+import Language.PureScript.CoreFn.Traversals (traverseCoreFn)
 import Language.PureScript.PSString (mkString)
 
 -- This module is responsible for ensuring that the bindings in recursive

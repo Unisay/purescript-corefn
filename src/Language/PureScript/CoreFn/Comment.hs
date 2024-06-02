@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | Defines the types of source code comments
-module Language.PureScript.Comments where
+module Language.PureScript.CoreFn.Comment where
 
 import Data.Aeson.TH
   ( Options (..)

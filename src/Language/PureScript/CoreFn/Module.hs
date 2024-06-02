@@ -1,9 +1,10 @@
 module Language.PureScript.CoreFn.Module where
 
 import Data.Map (Map)
-import Language.PureScript.Comments (Comment)
+import Language.PureScript.CoreFn.Comment (Comment)
 import Language.PureScript.CoreFn.Expr (Bind)
-import Language.PureScript.Names (Ident, ModuleName)
+import Language.PureScript.CoreFn.Ident (Ident)
+import Language.PureScript.CoreFn.ModuleName (ModuleName)
 
 -- | The CoreFn module representation
 data Module a = Module

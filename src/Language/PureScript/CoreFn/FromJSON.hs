@@ -8,36 +8,35 @@ module Language.PureScript.CoreFn.FromJSON
   , moduleWithoutVersion
   ) where
 
+import Control.Applicative ((<|>))
 import Data.Aeson
+  ( FromJSON (parseJSON)
+  , Object
+  , Value (Null)
+  , withObject
+  , withText
+  , (.:)
+  )
 import Data.Aeson.Types (Parser, listParser)
 import Data.Map.Strict qualified as M
-
--- , unusedIdent
-
-import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Data.Version (Version, parseVersion)
-import Language.PureScript.CoreFn
-  ( Ann
-  , Bind (..)
+import Language.PureScript.CoreFn.Expr
+  ( Bind (..)
   , Binder (..)
-  , CaseAlternative (CaseAlternative)
-  , ConstructorType (..)
+  , CaseAlternative (..)
   , Expr (..)
   , Guard
   , Literal (..)
-  , Meta (..)
-  , Module (..)
   )
-import Language.PureScript.Names
-  ( Ident (Ident, UnusedIdent)
-  , ModuleName (..)
-  , ProperName (..)
-  , Qualified (..)
-  , QualifiedBy (ByModuleName, BySourcePos)
-  )
+import Language.PureScript.CoreFn.Ident (Ident (Ident, UnusedIdent))
+import Language.PureScript.CoreFn.Meta (Ann, ConstructorType (..), Meta (..))
+import Language.PureScript.CoreFn.Module (Module (..))
+import Language.PureScript.CoreFn.ModuleName (ModuleName)
+import Language.PureScript.CoreFn.ProperName (ProperName (..))
+import Language.PureScript.CoreFn.Qualified (Qualified (..), QualifiedBy (..))
 import Language.PureScript.PSString (PSString)
 import Text.ParserCombinators.ReadP (readP_to_S)
 
@@ -122,16 +121,13 @@ identFromJSON = withText "Ident" $ \case
     | ident == "$__unused" → pure UnusedIdent
     | otherwise → pure $ Ident ident
 
-properNameFromJSON ∷ Value → Parser (ProperName a)
-properNameFromJSON = fmap ProperName . parseJSON
-
 qualifiedFromJSON ∷ (Text → a) → Value → Parser (Qualified a)
 qualifiedFromJSON f = withObject "Qualified" qualifiedFromObj
  where
   qualifiedFromObj o =
     qualifiedByModuleFromObj o <|> qualifiedBySourcePosFromObj o
   qualifiedByModuleFromObj o = do
-    mn ← o .: "moduleName" >>= moduleNameFromJSON
+    mn ← o .: "moduleName" >>= parseJSON
     i ← o .: "identifier" >>= withText "Ident" (return . f)
     pure $ Qualified (ByModuleName mn) i
   qualifiedBySourcePosFromObj o = do
@@ -139,15 +135,12 @@ qualifiedFromJSON f = withObject "Qualified" qualifiedFromObj
     i ← o .: "identifier" >>= withText "Ident" (return . f)
     pure $ Qualified (BySourcePos ss) i
 
-moduleNameFromJSON ∷ Value → Parser ModuleName
-moduleNameFromJSON v = ModuleName . T.intercalate "." <$> listParser parseJSON v
-
 moduleFromJSON ∷ Value → Parser (Version, Module Ann)
 moduleFromJSON = withObject "Module" moduleFromObj
  where
   moduleFromObj o = do
     version ← o .: "builtWith" >>= versionFromJSON
-    moduleName ← o .: "moduleName" >>= moduleNameFromJSON
+    moduleName ← o .: "moduleName" >>= parseJSON
     moduleComments ← o .: "comments" >>= listParser parseJSON
     modulePath ← o .: "modulePath"
     moduleImports ← o .: "imports" >>= listParser (importFromJSON modulePath)
@@ -169,7 +162,7 @@ moduleFromJSON = withObject "Module" moduleFromObj
       "Import"
       ( \o → do
           ann ← o .: "annotation" >>= annFromJSON modulePath
-          mn ← o .: "moduleName" >>= moduleNameFromJSON
+          mn ← o .: "moduleName" >>= parseJSON
           return (ann, mn)
       )
 
@@ -231,8 +224,8 @@ exprFromJSON modulePath = withObject "Expr" exprFromObj
 
   constructorFromObj o = do
     ann ← o .: "annotation" >>= annFromJSON modulePath
-    tyn ← o .: "typeName" >>= properNameFromJSON
-    con ← o .: "constructorName" >>= properNameFromJSON
+    tyn ← o .: "typeName" >>= parseJSON
+    con ← o .: "constructorName" >>= parseJSON
     is ← o .: "fieldNames" >>= listParser identFromJSON
     return $ Constructor ann tyn con is
 
@@ -274,7 +267,8 @@ exprFromJSON modulePath = withObject "Expr" exprFromObj
     return $ Let ann bs e
 
 caseAlternativeFromJSON ∷ FilePath → Value → Parser (CaseAlternative Ann)
-caseAlternativeFromJSON modulePath = withObject "CaseAlternative" caseAlternativeFromObj
+caseAlternativeFromJSON modulePath =
+  withObject "CaseAlternative" caseAlternativeFromObj
  where
   caseAlternativeFromObj o = do
     bs ← o .: "binders" >>= listParser (binderFromJSON modulePath)

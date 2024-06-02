@@ -52,14 +52,19 @@ library
     UnicodeSyntax
 
   exposed-modules:
-    Language.PureScript.Comments
     Language.PureScript.CoreFn
+    Language.PureScript.CoreFn.Comment
     Language.PureScript.CoreFn.Expr
     Language.PureScript.CoreFn.FromJSON
+    Language.PureScript.CoreFn.Ident
     Language.PureScript.CoreFn.Laziness
     Language.PureScript.CoreFn.Meta
     Language.PureScript.CoreFn.Module
+    Language.PureScript.CoreFn.ModuleName
+    Language.PureScript.CoreFn.Name
+    Language.PureScript.CoreFn.ProperName
+    Language.PureScript.CoreFn.Qualified
     Language.PureScript.CoreFn.Reader
+    Language.PureScript.CoreFn.SourcePos
     Language.PureScript.CoreFn.Traversals
-    Language.PureScript.Names
     Language.PureScript.PSString

@@ -14,13 +14,13 @@ import Data.Map (Map)
 import Data.Map.Lazy qualified as Map
 import Data.Tagged (Tagged (unTagged))
 import Data.Text qualified as Text
-import Language.PureScript.CoreFn qualified as Cfn
 import Language.PureScript.CoreFn.FromJSON
   ( ModuleWithVersion
   , moduleWithoutVersion
   )
-import Language.PureScript.Names (ModuleName (moduleNameToText))
-import Language.PureScript.Names qualified as PS
+import Language.PureScript.CoreFn.Meta (Ann)
+import Language.PureScript.CoreFn.Module (Module (moduleImports))
+import Language.PureScript.CoreFn.ModuleName (ModuleName, moduleNameToText)
 import Path
   ( Abs
   , Dir
@@ -38,14 +38,14 @@ readModuleRecursively
   ∷ ∀ e
    . e `CouldBeAnyOf` '[ModuleNotFound, ModuleDecodingErr]
   ⇒ Tagged "output" (SomeBase Dir)
-  → PS.ModuleName
-  → ExceptT (Oops.Variant e) IO (Map PS.ModuleName (Cfn.Module Cfn.Ann))
+  → ModuleName
+  → ExceptT (Oops.Variant e) IO (Map ModuleName (Module Ann))
 readModuleRecursively output moduleName = recurse mempty [moduleName]
  where
   recurse
-    ∷ Map PS.ModuleName (Cfn.Module Cfn.Ann)
-    → [PS.ModuleName]
-    → ExceptT (Oops.Variant e) IO (Map PS.ModuleName (Cfn.Module Cfn.Ann))
+    ∷ Map ModuleName (Module Ann)
+    → [ModuleName]
+    → ExceptT (Oops.Variant e) IO (Map ModuleName (Module Ann))
   recurse loaded = \case
     [] → pure loaded
     modName : otherNames
@@ -58,24 +58,24 @@ readModuleRecursively output moduleName = recurse mempty [moduleName]
       readModule output modName >>= \m →
         recurse
           (Map.insert modName m loaded)
-          (otherNames <> (fmap snd . Cfn.moduleImports) m)
+          (otherNames <> (fmap snd . moduleImports) m)
 
 readModule
   ∷ e `CouldBeAnyOf` '[ModuleNotFound, ModuleDecodingErr]
   ⇒ Tagged "output" (SomeBase Dir)
-  → PS.ModuleName
-  → ExceptT (Variant e) IO (Cfn.Module Cfn.Ann)
+  → ModuleName
+  → ExceptT (Variant e) IO (Module Ann)
 readModule output modName = do
-  path ← modulePath output modName
+  path ← moduleAbsolutePath output modName
   lift (Json.eitherDecodeFileStrict @ModuleWithVersion (toFilePath path))
     >>= either (throw . ModuleDecodingErr path) (pure . moduleWithoutVersion)
 
-modulePath
+moduleAbsolutePath
   ∷ e `CouldBe` ModuleNotFound
   ⇒ Tagged "output" (SomeBase Dir)
-  → PS.ModuleName
+  → ModuleName
   → ExceptT (Variant e) IO (Path Abs File)
-modulePath psOutPath modName = do
+moduleAbsolutePath psOutPath modName = do
   psOutput ←
     case unTagged psOutPath of
       Abs a → pure a

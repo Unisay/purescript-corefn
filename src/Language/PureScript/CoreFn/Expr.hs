@@ -4,7 +4,9 @@
 module Language.PureScript.CoreFn.Expr where
 
 import Control.Arrow ((***))
-import Language.PureScript.Names
+import Language.PureScript.CoreFn.Ident (Ident)
+import Language.PureScript.CoreFn.ProperName (ProperName, ProperNameType (..))
+import Language.PureScript.CoreFn.Qualified (Qualified)
 import Language.PureScript.PSString (PSString)
 
 -- | Data type for expressions and terms

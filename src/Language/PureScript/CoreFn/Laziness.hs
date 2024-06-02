@@ -1,6 +1,9 @@
 {-# OPTIONS_GHC -Wno-missing-local-signatures #-}
 
-module Language.PureScript.CoreFn.Laziness (applyLazinessTransform) where
+module Language.PureScript.CoreFn.Laziness
+  ( applyLazinessTransform
+  , runtimeLazyName
+  ) where
 
 import Control.Applicative (Alternative, Const (..))
 import Control.Arrow (first, (&&&))
@@ -715,7 +718,7 @@ applyLazinessTransform mn rawItems =
         UnusedIdent → "$__unused"
         InternalIdent internalIdentData →
           case internalIdentData of
-            RuntimeLazyFactory → "$__runtimeLazy"
+            RuntimeLazyFactory → runtimeLazyName
             Lazy t → "Lazy_" <> t
 
   dropKeysAbove ∷ Int → IM.MonoidalIntMap a → IM.MonoidalIntMap a
@@ -726,6 +729,9 @@ applyLazinessTransform mn rawItems =
 
   uncoerceForce ∷ Ap Maybe (Max Int) → Maybe Int
   uncoerceForce = coerce
+
+runtimeLazyName ∷ Text
+runtimeLazyName = "$__runtimeLazy"
 
 -- | Exit with an error message and a crash report link.
 internalError ∷ HasCallStack ⇒ Text → a

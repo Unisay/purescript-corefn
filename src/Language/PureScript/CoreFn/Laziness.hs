@@ -82,7 +82,7 @@ import Language.PureScript.PSString (mkString)
 {- |
 Visits every `Var` in an expression with the provided function, including
 the amount of delay and force applied to that `Var`, and substitutes the
-result back into the tree (propagating an `Prelude.Applicative` effect).
+result back into the tree (propagating an `Applicative` effect).
 
 Delay is a non-negative integer that represents the number of lambdas that
 enclose an expression. Force is a non-negative integer that represents the
@@ -137,20 +137,20 @@ exposes `Var`s to the provided function.
 -}
 onVarsWithDelayAndForce
   ∷ ∀ f
-   . Prelude.Applicative f
-  ⇒ ( Prelude.Int
-      → Prelude.Maybe Prelude.Int
+   . Applicative f
+  ⇒ ( Int
+      → Maybe Int
       → Ann
       → Qualified Ident
       → f (Expr Ann)
     )
   → Expr Ann
   → f (Expr Ann)
-onVarsWithDelayAndForce f = Prelude.snd Prelude.. go 0 Prelude.$ Prelude.Just 0
+onVarsWithDelayAndForce f = snd . go 0 $ Just 0
  where
   go
-    ∷ Prelude.Int
-    → Prelude.Maybe Prelude.Int
+    ∷ Int
+    → Maybe Int
     → (Bind Ann → f (Bind Ann), Expr Ann → f (Expr Ann))
   go delay force = (handleBind, handleExpr')
    where
@@ -160,10 +160,10 @@ onVarsWithDelayAndForce f = Prelude.snd Prelude.. go 0 Prelude.$ Prelude.Just 0
       Var a i → f delay force a i
       Abs a i e →
         Abs a i
-          Prelude.<$> Prelude.snd
-            ( if force Prelude.== Prelude.Just 0
-                then go (Prelude.succ delay) force
-                else go delay Prelude.$ Prelude.fmap Prelude.pred force
+          <$> snd
+            ( if force == Just 0
+                then go (succ delay) force
+                else go delay $ fmap pred force
             )
             e
       App a e1 e2 →
@@ -176,32 +176,32 @@ onVarsWithDelayAndForce f = Prelude.snd Prelude.. go 0 Prelude.$ Prelude.Just 0
         handleApp 1 [(a, e2)] e1
       Case a vs alts →
         Case a
-          Prelude.<$> Prelude.traverse (Prelude.snd Prelude.$ go delay Prelude.Nothing) vs
-          Prelude.<*> Prelude.traverse handleCaseAlternative alts
+          <$> traverse (snd $ go delay Nothing) vs
+          <*> traverse handleCaseAlternative alts
       Let a ds e →
         Let a
-          Prelude.<$> Prelude.traverse (Prelude.fst Prelude.$ go delay Prelude.Nothing) ds
-          Prelude.<*> handleExpr' e
+          <$> traverse (fst $ go delay Nothing) ds
+          <*> handleExpr' e
       other → handleExpr other
 
     handleApp len args = \case
-      App a e1 e2 → handleApp (len Prelude.+ 1) ((a, e2) : args) e1
-      Var a@(Prelude.Just meta) i
+      App a e1 e2 → handleApp (len + 1) ((a, e2) : args) e1
+      Var a@(Just meta) i
         | isConstructorLike meta →
-            Prelude.foldl
-              (\e1 (a2, e2) → App a2 Prelude.<$> e1 Prelude.<*> handleExpr' e2)
+            foldl
+              (\e1 (a2, e2) → App a2 <$> e1 <*> handleExpr' e2)
               (f delay force a i)
               args
       e →
-        Prelude.foldl
-          ( \e1 (a2, e2) → App a2 Prelude.<$> e1 Prelude.<*> Prelude.snd (go delay Prelude.Nothing) e2
+        foldl
+          ( \e1 (a2, e2) → App a2 <$> e1 <*> snd (go delay Nothing) e2
           )
-          (Prelude.snd (go delay (Prelude.fmap (Prelude.+ len) force)) e)
+          (snd (go delay (fmap (+ len) force)) e)
           args
     isConstructorLike = \case
-      IsConstructor {} → Prelude.True
-      IsNewtype → Prelude.True
-      _ → Prelude.False
+      IsConstructor {} → True
+      IsNewtype → True
+      _ → False
 
 -- Once we assign a delay and force value to every `Var` in the binding group,
 -- we can consider how to order the bindings to allow them all to successfully
@@ -378,22 +378,22 @@ we want to resolve any key collisions in their MonoidalIntMaps with this
 semigroup:
 -}
 
-instance Prelude.Ord a ⇒ Prelude.Semigroup (MaxRoseNode m a) where
-  l@(MaxRoseNode l1 _) <> r@(MaxRoseNode r1 _) = if r1 Prelude.> l1 then r else l
+instance Ord a ⇒ Semigroup (MaxRoseNode m a) where
+  l@(MaxRoseNode l1 _) <> r@(MaxRoseNode r1 _) = if r1 > l1 then r else l
 
 -- And that's why this is called a MaxRoseTree.
 --
 -- Traversing this tree to get a single MonoidalIntMap with the entire closure
 -- plus force information is fairly straightforward:
 mrtFlatten
-  ∷ (Prelude.Monad m, Prelude.Ord a)
+  ∷ (Monad m, Ord a)
   ⇒ MaxRoseTree m a
   → m (IM.MonoidalIntMap (Max a))
 mrtFlatten =
   ( getAp
-      Prelude.. IM.foldMapWithKey
+      . IM.foldMapWithKey
         ( \i (MaxRoseNode a inner) →
-            Ap Prelude.$ (IM.singleton i (Max a) <>) Prelude.<$> mrtFlatten inner
+            Ap $ (IM.singleton i (Max a) <>) <$> mrtFlatten inner
         )
       =<<
   )
@@ -418,34 +418,34 @@ those indices.
 -}
 searchReachable
   ∷ ∀ m force
-   . (Alternative m, Prelude.Monad m, Prelude.Enum force, Prelude.Ord force)
-  ⇒ Prelude.Int
-  → ((Prelude.Int, force) → m (IM.MonoidalIntMap (Max force)))
-  → Array Prelude.Int (m (IM.MonoidalIntMap (Max force)))
-searchReachable maxIdx lookupEdges = mrtFlatten Prelude.. NE.head Prelude.<$> mem
+   . (Alternative m, Monad m, Enum force, Ord force)
+  ⇒ Int
+  → ((Int, force) → m (IM.MonoidalIntMap (Max force)))
+  → Array Int (m (IM.MonoidalIntMap (Max force)))
+searchReachable maxIdx lookupEdges = mrtFlatten . NE.head <$> mem
  where
   -- This is a finite array of infinite lists, used to memoize all the search
   -- trees. `unsafeHead` is used above to pull the first tree out of each list
   -- in the array--the one corresponding to zero force, which is what's needed
   -- to initialize the corresponding identifier. (`unsafeHead` is safe here, of
   -- course: infinite lists.)
-  mem ∷ Array Prelude.Int (NonEmpty (MaxRoseTree m force))
+  mem ∷ Array Int (NonEmpty (MaxRoseTree m force))
   mem =
     A.listArray
       (0, maxIdx)
       [ NE.fromList
         [ cutLoops
-          Prelude.<*> Prelude.fmap (IM.mapWithKey memoizedNode) Prelude.. lookupEdges
-          Prelude.$ (i, f)
-        | f ← [Prelude.toEnum 0 ..]
+          <*> fmap (IM.mapWithKey memoizedNode) . lookupEdges
+          $ (i, f)
+        | f ← [toEnum 0 ..]
         ]
       | i ← [0 .. maxIdx]
       ]
 
-  memoizedNode ∷ Prelude.Int → Max force → MaxRoseNode m force
+  memoizedNode ∷ Int → Max force → MaxRoseNode m force
   memoizedNode i (Max force) =
-    MaxRoseNode force Prelude.$
-      NE.toList (mem A.! i) Prelude.!! Prelude.fromEnum force
+    MaxRoseNode force $
+      NE.toList (mem A.! i) !! fromEnum force
 
   -- And this is the function that prevents the search from actually being
   -- infinite. It applies a filter to a `MaxRoseTree` at every level, looking for
@@ -459,14 +459,14 @@ searchReachable maxIdx lookupEdges = mrtFlatten Prelude.. NE.head Prelude.<$> me
   -- there are a finite number of indices in our universe, this guarantees that
   -- the analysis terminates, because no single search path can have length
   -- greater than `maxIdx`.
-  cutLoops ∷ (Prelude.Int, force) → MaxRoseTree m force → MaxRoseTree m force
+  cutLoops ∷ (Int, force) → MaxRoseTree m force → MaxRoseTree m force
   cutLoops (i, force) = go
    where
-    go = (Prelude.=<<) Prelude.. IM.traverseWithKey Prelude.$ \i' (MaxRoseNode force' inner) →
+    go = (=<<) . IM.traverseWithKey $ \i' (MaxRoseNode force' inner) →
       MaxRoseNode force'
-        Prelude.<$> if i Prelude.== i'
-          then guard (force Prelude.>= force') $> Prelude.pure IM.empty
-          else Prelude.pure Prelude.$ go inner
+        <$> if i == i'
+          then guard (force >= force') $> pure IM.empty
+          else pure $ go inner
 
 -- One last data structure to define and then it's on to the main event.
 --
@@ -479,7 +479,7 @@ data RecursiveGroupItem e
   = EagerBinding Ann e
   | LazyDefinition e
   | LazyBinding Ann
-  deriving stock (Prelude.Functor)
+  deriving stock (Functor)
 
 {- |
 Transform a recursive binding group, reordering the bindings within when a
@@ -495,13 +495,13 @@ applyLazinessTransform mn rawItems =
     -- Establish the mapping from names to ints.
     rawItemsByName ∷ M.MonoidalMap Ident (Ann, Expr Ann)
     rawItemsByName =
-      M.fromList Prelude.$
-        (Prelude.snd Prelude.. Prelude.fst &&& first Prelude.fst) Prelude.<$> rawItems
+      M.fromList $
+        (snd . fst &&& first fst) <$> rawItems
 
-    maxIdx = M.size rawItemsByName Prelude.- 1
+    maxIdx = M.size rawItemsByName - 1
 
-    rawItemsByIndex ∷ A.Array Prelude.Int (Ann, Expr Ann)
-    rawItemsByIndex = A.listArray (0, maxIdx) Prelude.$ M.elems rawItemsByName
+    rawItemsByIndex ∷ A.Array Int (Ann, Expr Ann)
+    rawItemsByIndex = A.listArray (0, maxIdx) $ M.elems rawItemsByName
 
     names ∷ S.Set Ident
     names = M.keysSet rawItemsByName
@@ -517,13 +517,13 @@ applyLazinessTransform mn rawItems =
     --                A           B (keys)           C (keys)           D
     findReferences
       ∷ Expr Ann
-      → IM.MonoidalIntMap (IM.MonoidalIntMap (Ap Prelude.Maybe (Max Prelude.Int)))
-    findReferences = (getConst .) Prelude.. onVarsWithDelayAndForce Prelude.$
+      → IM.MonoidalIntMap (IM.MonoidalIntMap (Ap Maybe (Max Int)))
+    findReferences = (getConst .) . onVarsWithDelayAndForce $
       \delay force _ → \case
         Qualified qb ident
-          | Prelude.all (Prelude.== mn) (toMaybeModuleName qb)
-          , Prelude.Just i ← ident `S.lookupIndex` names →
-              Const Prelude.. IM.singleton delay Prelude.. IM.singleton i Prelude.$
+          | all (== mn) (toMaybeModuleName qb)
+          , Just i ← ident `S.lookupIndex` names →
+              Const . IM.singleton delay . IM.singleton i $
                 coerceForce force
         _ → Const IM.empty
 
@@ -535,9 +535,9 @@ applyLazinessTransform mn rawItems =
     --                     A    B (keys)           C (keys)           D
     refsByIndex
       ∷ A.Array
-          Prelude.Int
-          (IM.MonoidalIntMap (IM.MonoidalIntMap (Ap Prelude.Maybe (Max Prelude.Int))))
-    refsByIndex = findReferences Prelude.. Prelude.snd Prelude.<$> rawItemsByIndex
+          Int
+          (IM.MonoidalIntMap (IM.MonoidalIntMap (Ap Maybe (Max Int))))
+    refsByIndex = findReferences . snd <$> rawItemsByIndex
 
     -- Using the approach explained above, traverse the reference graph generated
     -- by `refsByIndex` and find all reachable names.
@@ -551,15 +551,15 @@ applyLazinessTransform mn rawItems =
     -- where A, B, C, and D are as below:
     --                           A    B      C (keys)           D
     reachablesByIndex
-      ∷ A.Array Prelude.Int (Prelude.Maybe (IM.MonoidalIntMap (Max Prelude.Int)))
-    reachablesByIndex = searchReachable maxIdx Prelude.$ \(i, force) →
+      ∷ A.Array Int (Maybe (IM.MonoidalIntMap (Max Int)))
+    reachablesByIndex = searchReachable maxIdx $ \(i, force) →
       getAp
-        Prelude.. Prelude.flip IM.foldMapWithKey (dropKeysAbove force Prelude.$ refsByIndex A.! i)
-        Prelude.$ \delay →
-          IM.foldMapWithKey Prelude.$ \i' force' →
-            Ap Prelude.$
-              IM.singleton i' Prelude.. Max Prelude.. (force Prelude.- delay +)
-                Prelude.<$> uncoerceForce force'
+        . flip IM.foldMapWithKey (dropKeysAbove force $ refsByIndex A.! i)
+        $ \delay →
+          IM.foldMapWithKey $ \i' force' →
+            Ap $
+              IM.singleton i' . Max . (force - delay +)
+                <$> uncoerceForce force'
 
     -- If `reachablesByIndex` is a sort of labeled relation, this function
     -- produces part of the reverse relation, but only for the edges from the
@@ -572,30 +572,30 @@ applyLazinessTransform mn rawItems =
     -- where A, B, and C are as below:
     --                      (B)    A                  B (singleton key)  C
     reverseReachablesFor
-      ∷ Prelude.Int
-      → IM.MonoidalIntMap (IM.MonoidalIntMap (Ap Prelude.Maybe (Max Prelude.Int)))
+      ∷ Int
+      → IM.MonoidalIntMap (IM.MonoidalIntMap (Ap Maybe (Max Int)))
     reverseReachablesFor i = case reachablesByIndex A.! i of
-      Prelude.Nothing →
-        IM.fromAscList Prelude.$
-          (,IM.singleton i Prelude.$ Ap Prelude.Nothing) Prelude.<$> [0 .. maxIdx]
-      Prelude.Just im → IM.singleton i Prelude.. Ap Prelude.. Prelude.Just Prelude.<$> im
+      Nothing →
+        IM.fromAscList $
+          (,IM.singleton i $ Ap Nothing) <$> [0 .. maxIdx]
+      Just im → IM.singleton i . Ap . Just <$> im
 
     -- We can use `reachablesByIndex` to build a finite graph and topsort it;
     -- in the process, we'll pack the nodes of the graph with data we'll want
     -- next. Remember that if our reachability computation aborted, we have to
     -- assume that every other identifier is reachable from that one--hence the
     -- `maybe [0..maxIdx]`.
-    sccs = stronglyConnComp Prelude.$ do
+    sccs = stronglyConnComp $ do
       (i, mbReachable) ← A.assocs reachablesByIndex
-      Prelude.pure
+      pure
         ( (reverseReachablesFor i, (S.elemAt i names, rawItemsByIndex A.! i))
         , i
-        , Prelude.maybe [0 .. maxIdx] (IS.toList Prelude.. IM.keysSet) mbReachable
+        , maybe [0 .. maxIdx] (IS.toList . IM.keysSet) mbReachable
         )
 
-    (replacements, items) = Prelude.flip Prelude.foldMap sccs Prelude.$ \case
+    (replacements, items) = flip foldMap sccs $ \case
       -- The easy case: this binding doesn't need to be made lazy after all!
-      AcyclicSCC (_, (ident, (a, e))) → Prelude.pure [(ident, EagerBinding a e)]
+      AcyclicSCC (_, (ident, (a, e))) → pure [(ident, EagerBinding a e)]
       -- The tough case: we have a loop.
       -- We need to do two things here:
       --   * Collect the reversed reachables relation for each vertex in this
@@ -605,12 +605,12 @@ applyLazinessTransform mn rawItems =
       -- Both of these results are monoidal, so the outer `foldMap` will
       -- concatenate them pairwise.
       CyclicSCC vertices →
-        ( Prelude.foldMap Prelude.fst vertices
-        , Prelude.map
-            (Prelude.fmap (LazyDefinition Prelude.. Prelude.snd) Prelude.. Prelude.snd)
+        ( foldMap fst vertices
+        , map
+            (fmap (LazyDefinition . snd) . snd)
             vertices
-            Prelude.<> Prelude.map
-              (Prelude.fmap (LazyBinding Prelude.. Prelude.fst) Prelude.. Prelude.snd)
+            <> map
+              (fmap (LazyBinding . fst) . snd)
               vertices
         )
 
@@ -619,19 +619,19 @@ applyLazinessTransform mn rawItems =
     replacementsByName
       ∷ M.MonoidalMap
           Ident
-          (M.MonoidalMap Ident (Ap Prelude.Maybe (Max Prelude.Int)))
+          (M.MonoidalMap Ident (Ap Maybe (Max Int)))
     replacementsByName =
       M.fromAscList
-        Prelude.. Prelude.map
+        . map
           ( bimap
               (`S.elemAt` names)
               ( M.fromAscList
-                  Prelude.. Prelude.map (first (`S.elemAt` names))
-                  Prelude.. IM.toAscList
+                  . map (first (`S.elemAt` names))
+                  . IM.toAscList
               )
           )
-        Prelude.. IM.toAscList
-        Prelude.$ replacements
+        . IM.toAscList
+        $ replacements
 
     -- And finally, this is the second delay/force traversal where we take
     -- `replacementsByName` and use it to rewrite references with force calls,
@@ -645,34 +645,34 @@ applyLazinessTransform mn rawItems =
       → (Ident, RecursiveGroupItem (Expr Ann))
     replaceReferencesWithForceCall pair@(ident, item) =
       case ident `M.lookup` replacementsByName of
-        Prelude.Nothing → pair
-        Prelude.Just m →
+        Nothing → pair
+        Just m →
           let
-            rewriteExpr = (runIdentity .) Prelude.. onVarsWithDelayAndForce Prelude.$
+            rewriteExpr = (runIdentity .) . onVarsWithDelayAndForce $
               \delay _ ann →
-                Prelude.pure Prelude.. \case
+                pure . \case
                   Qualified qb ident'
-                    | Prelude.all (Prelude.== mn) (toMaybeModuleName qb)
-                    , Prelude.any (Prelude.all (Prelude.>= Max delay) Prelude.. getAp) Prelude.$
+                    | all (== mn) (toMaybeModuleName qb)
+                    , any (all (>= Max delay) . getAp) $
                         ident' `M.lookup` m →
                         makeForceCall ann ident'
                   q → Var ann q
            in
-            (ident, rewriteExpr Prelude.<$> item)
+            (ident, rewriteExpr <$> item)
    in
     -- All that's left to do is run the above replacement on every item,
     -- translate items from our `RecursiveGroupItem` representation back into the
     -- form CoreFn expects, and inform the caller whether we made any laziness
     -- transformations after all. (That last bit of information is used to
     -- determine if the runtime factory function needs to be injected.)
-    ( Prelude.uncurry fromRGI Prelude.. replaceReferencesWithForceCall
-        Prelude.<$> items
-    , Any Prelude.. Prelude.not Prelude.$ IM.null replacements
+    ( uncurry fromRGI . replaceReferencesWithForceCall
+        <$> items
+    , Any . not $ IM.null replacements
     )
  where
-  nullAnn = Prelude.Nothing
+  nullAnn = Nothing
   lazifyIdent = \case
-    Ident txt → InternalIdent Prelude.$ Lazy txt
+    Ident txt → InternalIdent $ Lazy txt
     _ → internalError "Unexpected argument to lazifyIdent"
 
   makeForceCall ∷ Ann → Ident → Expr Ann
@@ -683,10 +683,10 @@ applyLazinessTransform mn rawItems =
     -- evaluation looped.
     App
       nullAnn
-      (Var nullAnn Prelude.. Qualified ByNullSourcePos Prelude.$ lazifyIdent ident)
-      Prelude.. Literal nullAnn
-      Prelude.. NumericLiteral
-      Prelude.$ Prelude.Left 0
+      (Var nullAnn . Qualified ByNullSourcePos $ lazifyIdent ident)
+      . Literal nullAnn
+      . NumericLiteral
+      $ Left 0
 
   fromRGI ∷ Ident → RecursiveGroupItem (Expr Ann) → ((Ann, Ident), Expr Ann)
   fromRGI i = \case
@@ -702,34 +702,34 @@ applyLazinessTransform mn rawItems =
      where
       app = App nullAnn
       thunk = Abs nullAnn UnusedIdent
-      strLit = Literal nullAnn Prelude.. StringLiteral Prelude.. mkString
+      strLit = Literal nullAnn . StringLiteral . mkString
       runtimeLazy =
-        Var nullAnn Prelude.. Qualified ByNullSourcePos Prelude.$
+        Var nullAnn . Qualified ByNullSourcePos $
           InternalIdent RuntimeLazyFactory
 
       runIdent ∷ Ident → Text
       runIdent = \case
         Ident ident → ident
-        GenIdent Prelude.Nothing n → "$" Prelude.<> Text.pack (Prelude.show n)
-        GenIdent (Prelude.Just name) n → "$" Prelude.<> name Prelude.<> Text.pack (Prelude.show n)
+        GenIdent Nothing n → "$" <> Text.pack (show n)
+        GenIdent (Just name) n → "$" <> name <> Text.pack (show n)
         UnusedIdent → "$__unused"
         InternalIdent internalIdentData →
           case internalIdentData of
             RuntimeLazyFactory → "$__runtimeLazy"
-            Lazy t → "Lazy_" Prelude.<> t
+            Lazy t → "Lazy_" <> t
 
-  dropKeysAbove ∷ Prelude.Int → IM.MonoidalIntMap a → IM.MonoidalIntMap a
-  dropKeysAbove n = Prelude.fst Prelude.. IM.split (n Prelude.+ 1)
+  dropKeysAbove ∷ Int → IM.MonoidalIntMap a → IM.MonoidalIntMap a
+  dropKeysAbove n = fst . IM.split (n + 1)
 
-  coerceForce ∷ Prelude.Maybe Prelude.Int → Ap Prelude.Maybe (Max Prelude.Int)
+  coerceForce ∷ Maybe Int → Ap Maybe (Max Int)
   coerceForce = coerce
 
-  uncoerceForce ∷ Ap Prelude.Maybe (Max Prelude.Int) → Prelude.Maybe Prelude.Int
+  uncoerceForce ∷ Ap Maybe (Max Int) → Maybe Int
   uncoerceForce = coerce
 
 -- | Exit with an error message and a crash report link.
 internalError ∷ HasCallStack ⇒ Text → a
 internalError =
-  Prelude.error
-    Prelude.. Text.unpack
-    Prelude.. ("An internal error occurred during compilation: " <>)
+  error
+    . Text.unpack
+    . ("An internal error occurred during compilation: " <>)

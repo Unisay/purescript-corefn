@@ -199,8 +199,7 @@ onVarsWithDelayAndForce f = snd . go 0 $ Just 0
               args
       e →
         foldl
-          ( \e1 (a2, e2) → App a2 <$> e1 <*> snd (go delay Nothing) e2
-          )
+          (\e1 (a2, e2) → App a2 <$> e1 <*> snd (go delay Nothing) e2)
           (snd (go delay (fmap (+ len) force)) e)
           args
     isConstructorLike = \case
@@ -439,11 +438,11 @@ searchReachable maxIdx lookupEdges = mrtFlatten . NE.head <$> mem
     A.listArray
       (0, maxIdx)
       [ NE.fromList
-        [ cutLoops
-          <*> fmap (IM.mapWithKey memoizedNode) . lookupEdges
-          $ (i, f)
-        | f ← [toEnum 0 ..]
-        ]
+          [ cutLoops
+              <*> fmap (IM.mapWithKey memoizedNode) . lookupEdges
+              $ (i, f)
+          | f ← [toEnum 0 ..]
+          ]
       | i ← [0 .. maxIdx]
       ]
 
